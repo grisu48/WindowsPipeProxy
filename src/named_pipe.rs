@@ -44,7 +44,7 @@ impl NamedPipe {
     }
 
     // Attempt to reconnect the named pipe. attempts defines the number of reconnection attempts with 1 second delay between then.
-    pub fn reconnect(&mut self, attempts: i32) -> Result<()> {
+    pub fn reconnect(&mut self, attempts: i32, delay: u64, verbose: bool) -> Result<()> {
         let options = ClientOptions::new();
         for attempt in 1..attempts {
             match options.open(self.path()) {
@@ -53,12 +53,14 @@ impl NamedPipe {
                     return Ok(());
                 }
                 Err(err) => {
-                    eprintln!("reconnection attempt {attempt}/{attempts}: {err}");
+                    if verbose {
+                        eprintln!("reconnection attempt {attempt}/{attempts}: {err}");
+                    }
                 }
             };
-            sleep(Duration::from_secs(1));
+            sleep(Duration::from_secs(delay));
         }
-        bail!("timeout");
+        bail!("pipe reconnect failed after {attempts} attempts");
     }
 }
 
