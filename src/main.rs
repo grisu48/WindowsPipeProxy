@@ -53,7 +53,7 @@ impl Config {
 
 #[tokio::main]
 async fn main() {
-    let cf_filename = "C:\\pendolino.toml";
+    let cf_filename = "C:\\pipe-proxy.toml";
     if try_exists(cf_filename).await.unwrap() == false {
         eprintln!("configuration file {cf_filename} doesn't exist. Cannot start");
         std::process::exit(ERR_NO_CONFIG);
@@ -67,7 +67,7 @@ async fn main() {
         }
     };
 
-    eprintln!("pendolino v0.2");
+    eprintln!("Windows Pipe Proxy v0.2");
 
     let mut tasks = Vec::new();
     for pipe in cf.pipes {

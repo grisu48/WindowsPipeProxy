@@ -1,5 +1,5 @@
-## Example configuration for pendolino
-## This configuration defines two named pipes, see below.
+## Example configuration for Windows Pipe Proxy (WPP)
+## This configuration defines two named pipes.
 
 [[Pipe]]
 Pipe = '\\.\pipe\Gargamel'
