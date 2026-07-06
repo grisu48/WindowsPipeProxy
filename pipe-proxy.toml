@@ -1,6 +1,16 @@
 ## Example configuration for Windows Pipe Proxy (WPP)
 ## This configuration defines two named pipes.
 
+## Program configuration
+
+# Named pipe configuration
+[Plumber]
+# Configured the delay and number of reconnect attempts for the named pipe (necessary for host reboots)
+ReconnectAttempts = 10
+ReconnectDelay = 1
+
+## Pipe configuration
+
 [[Pipe]]
 Pipe = '\\.\pipe\Gargamel'
 Address = '127.0.0.1:1032'

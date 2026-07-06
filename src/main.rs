@@ -1,10 +1,8 @@
+mod config;
 mod named_pipe;
 mod splice;
 
-use std::{fs, time::Duration};
-
-use anyhow::Result;
-use serde::Deserialize;
+use std::time::Duration;
 use tokio::{
     fs::try_exists,
     net::{TcpListener, TcpStream},
@@ -29,38 +27,19 @@ const ERR_NO_CONFIG: i32 = 101; // Configuration file doesn't exist
 const ERR_CONFIG_INVAL: i32 = 102; // Configuration (file) is invalid
 const ERR_SOCKET_ERROR: i32 = 103; // Socket errot
 
-#[derive(Deserialize)]
-struct Config {
-    #[serde(rename = "Pipe")]
-    pipes: Vec<Pipe>, // Collection of pipe definitions we should act on
-}
-
-#[derive(Deserialize)]
-struct Pipe {
-    #[serde(rename = "Pipe")]
-    src: String, // Path to named pipe
-    #[serde(rename = "Address")]
-    addr: String, // Local server address
-}
-
-impl Config {
-    // Parse program arguments
-    pub fn parse_file(filename: &str) -> Result<Config> {
-        let contents = fs::read_to_string(filename)?;
-        let config: Config = toml::from_str(contents.as_str())?;
-        Ok(config)
-    }
-}
-
 #[tokio::main]
 async fn main() {
     let cf_filename = "C:\\pipe-proxy.toml";
-    if try_exists(cf_filename).await.expect("error checking configuration file") == false {
+    if try_exists(cf_filename)
+        .await
+        .expect("error checking configuration file")
+        == false
+    {
         eprintln!("configuration file {cf_filename} doesn't exist. Cannot start");
         std::process::exit(ERR_NO_CONFIG);
     }
 
-    let cf = match Config::parse_file(cf_filename) {
+    let cf = match config::Config::parse_file(cf_filename) {
         Ok(config) => config,
         Err(err) => {
             eprintln!("configuration error: {err}");
@@ -71,7 +50,7 @@ async fn main() {
     eprintln!("Windows Pipe Proxy v0.2");
 
     let mut tasks = Vec::new();
-    for pipe in cf.pipes {
+    for pipe in cf.clone().pipes {
         let listener = match TcpListener::bind(pipe.addr.as_str()).await {
             Ok(listener) => listener,
             Err(err) => {
@@ -80,7 +59,8 @@ async fn main() {
             }
         };
 
-        let task = task::spawn(worker_loop(pipe.src.clone(), listener));
+        let cf = cf.clone();
+        let task = task::spawn(worker_loop(pipe.src.clone(), listener, cf));
         tasks.push(task);
     }
     for task in tasks {
@@ -91,7 +71,7 @@ async fn main() {
     }
 }
 
-async fn worker_loop(named_pipe: String, listener : TcpListener) {
+async fn worker_loop(named_pipe: String, listener: TcpListener, cf: config::Config) {
     let address = match listener.local_addr() {
         Ok(addr) => addr.to_string(),
         Err(_) => "???".to_string(),
@@ -137,7 +117,11 @@ async fn worker_loop(named_pipe: String, listener : TcpListener) {
                     }
                     // Reconnect named pipe on pipe errors (e.g. when the VM reboots)
                     else if let Err(_) = pipe.info() {
-                        if let Err(err) = pipe.reconnect(10) {
+                        if let Err(err) = pipe.reconnect(
+                            cf.plumber.reconnect_attempts,
+                            cf.plumber.reconnect_delay,
+                            false,
+                        ) {
                             eprintln!("{named_pipe}: pipe error: {err}");
                         } else {
                             // Pipe is reconnected, let's continue
