@@ -47,7 +47,7 @@ async fn main() {
         }
     };
 
-    eprintln!("Windows Pipe Proxy v0.2");
+    eprintln!("Windows Pipe Proxy - version 0.3");
 
     let mut tasks = Vec::new();
     for pipe in cf.clone().pipes {
