@@ -22,6 +22,9 @@ pub struct Pipe {
     pub src: String, // Path to named pipe
     #[serde(rename = "Address")]
     pub addr: String, // Local server address
+    #[serde(rename = "File")]
+    #[serde(default)]
+    pub file: String, // Auxilliary debug sink file. All read bytes will be written here as well
 }
 
 // Configuration for the named pipe
