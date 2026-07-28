@@ -10,6 +10,10 @@ pub struct Config {
     #[serde(rename = "Plumber")]
     #[serde(default)]
     pub plumber: Plumber, // Named pipe configuration
+
+    #[serde(rename = "Verbose")]
+    #[serde(default)]
+    pub verbose: bool, // Verbose output
 }
 
 #[derive(Deserialize, Clone)]

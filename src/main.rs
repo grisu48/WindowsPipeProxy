@@ -48,6 +48,9 @@ async fn main() {
     };
 
     eprintln!("Windows Pipe Proxy - version 0.3");
+    if cf.verbose {
+        eprintln!("verbose mode on");
+    }
 
     let mut tasks = Vec::new();
     for pipe in cf.clone().pipes {
@@ -77,17 +80,26 @@ async fn worker_loop(named_pipe: String, listener: TcpListener, cf: config::Conf
         Err(_) => "???".to_string(),
     };
 
-    println!("{named_pipe} => {address} is listening");
+    if cf.verbose {
+        println!("{named_pipe} => {address} is listening");
+    }
 
     loop {
         let mut pipe = match NamedPipe::new(named_pipe.as_str()) {
             Ok(pipe) => pipe,
             Err(err) => {
                 // TODO: Better error matching, this works for now but can be improved.
-                if !err
-                    .to_string()
-                    .contains("The system cannot find the file specified.")
-                {
+                let msg = err.to_string();
+                let mut print = true;
+                // this error happens on every attempt and is very noisy. We want to hide it unconditionally.
+                if msg.contains("The system cannot find the file specified.") {
+                    print = false;
+                }
+                // exclusion list of errors to be printed unless verbose
+                if print && !cf.verbose {
+                    print = !msg.contains("All pipe instances are busy");
+                }
+                if print {
                     eprintln!("pipe {named_pipe} error: {err}");
                 }
                 sleep(Duration::from_millis(500)).await;
@@ -120,7 +132,7 @@ async fn worker_loop(named_pipe: String, listener: TcpListener, cf: config::Conf
                         if let Err(err) = pipe.reconnect(
                             cf.plumber.reconnect_attempts,
                             cf.plumber.reconnect_delay,
-                            false,
+                            cf.verbose,
                         ) {
                             eprintln!("{named_pipe}: pipe error: {err}");
                         } else {
@@ -134,6 +146,8 @@ async fn worker_loop(named_pipe: String, listener: TcpListener, cf: config::Conf
                 }
             };
         }
-        eprintln!("{} closed", pipe.path())
+        if cf.verbose {
+            eprintln!("{} closed", pipe.path())
+        }
     }
 }

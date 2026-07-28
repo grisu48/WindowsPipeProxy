@@ -2,6 +2,7 @@
 ## This configuration defines two named pipes.
 
 ## Program configuration
+Verbose = false
 
 # Named pipe configuration
 [Plumber]
