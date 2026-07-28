@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, bail};
 use serde::Deserialize;
 use std::{env, fs};
 
@@ -32,10 +32,13 @@ pub struct Pipe {
 pub struct Plumber {
     #[serde(rename = "ReconnectAttempts")]
     #[serde(default = "default_reconnect_attempts")]
-    pub reconnect_attempts: i32,
+    pub reconnect_attempts: i32, // Reconnection attempts before raising an error
     #[serde(rename = "ReconnectDelay")]
     #[serde(default = "default_reconnect_delay")]
-    pub reconnect_delay: u64,
+    pub reconnect_delay: u64, // Reconnect delay in seconds
+    #[serde(rename = "SpliceBuffer")]
+    #[serde(default = "default_splice_buffer")]
+    pub splice_buffer_size: usize, // Splice buffer size, i.e. the buffer between the named pipe and the socket
 }
 
 // Handler for program arguments
@@ -58,6 +61,14 @@ impl Config {
             self.verbose = true;
         }
     }
+
+    // Verify if the configuration is valid
+    pub fn verify(&self) -> Result<()> {
+        if self.plumber.splice_buffer_size <= 0 {
+            bail!("invalid splice buffer size");
+        }
+        Ok(())
+    }
 }
 
 impl Default for Plumber {
@@ -65,6 +76,7 @@ impl Default for Plumber {
         Self {
             reconnect_attempts: default_reconnect_attempts(),
             reconnect_delay: default_reconnect_delay(),
+            splice_buffer_size: default_splice_buffer(),
         }
     }
 }
@@ -81,6 +93,7 @@ impl Args {
     }
 
     // Create a new empty Args instance (mostly for testing)
+    #[allow(dead_code)]
     fn new() -> Args {
         Args {
             config_file: "".to_string(),
@@ -118,6 +131,11 @@ fn default_reconnect_attempts() -> i32 {
 
 fn default_reconnect_delay() -> u64 {
     1
+}
+
+// The default splice buffer size is 2048, which is larger than the typical network MTU but not too large to be wasteful
+fn default_splice_buffer() -> usize {
+    2048
 }
 
 #[cfg(test)]

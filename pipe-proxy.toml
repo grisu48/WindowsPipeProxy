@@ -9,6 +9,7 @@ Verbose = false
 # Configured the delay and number of reconnect attempts for the named pipe (necessary for host reboots)
 ReconnectAttempts = 10
 ReconnectDelay = 1
+SpliceBuffer = 2048
 
 ## Pipe configuration
 

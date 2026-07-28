@@ -4,7 +4,7 @@ mod splice;
 
 use std::time::Duration;
 use tokio::{
-    fs::{File, OpenOptions, try_exists},
+    fs::{OpenOptions, try_exists},
     io::AsyncWriteExt,
     net::{TcpListener, TcpStream},
     task,
@@ -58,10 +58,14 @@ async fn main() {
         }
     };
     cf.apply_args(&args);
+    cf.verify().expect("invalid configuration");
 
     eprintln!("Windows Pipe Proxy - version 0.3");
     if cf.verbose {
-        eprintln!("verbose mode on");
+        eprintln!("verbose: on");
+        eprintln!("Pipe reconnect attempts: {}", cf.plumber.reconnect_attempts);
+        eprintln!("Pipe reconnect delay: {}s", cf.plumber.reconnect_delay);
+        eprintln!("Splice buffer size: {}", cf.plumber.splice_buffer_size);
     }
 
     let mut tasks = Vec::new();
@@ -129,7 +133,7 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
         loop {
             let ret;
             if named_pipe.file.is_empty() {
-                ret = splice::splice(&mut pipe, &mut socket).await;
+                ret = splice::splice(&mut pipe, &mut socket, cf.plumber.splice_buffer_size).await;
             } else {
                 // Try to open the pipe log file, continue normally if that's not possible
                 // We always append to a log file.
@@ -148,12 +152,18 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
                                     .as_bytes(),
                             )
                             .await; // swallow error if any
-                        splice::splice2(&mut pipe, &mut socket, &mut file).await
+                        splice::splice2(
+                            &mut pipe,
+                            &mut socket,
+                            &mut file,
+                            cf.plumber.splice_buffer_size,
+                        )
+                        .await
                     }
                     Err(err) => {
                         eprintln!("{} error to open pipe log file: {err}", named_pipe.src);
                         // Continue without pipe log file
-                        splice::splice(&mut pipe, &mut socket).await
+                        splice::splice(&mut pipe, &mut socket, cf.plumber.splice_buffer_size).await
                     }
                 };
             }
