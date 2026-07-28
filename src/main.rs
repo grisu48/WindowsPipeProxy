@@ -10,7 +10,7 @@ use tokio::{
     time::sleep,
 };
 
-use crate::named_pipe::NamedPipe;
+use crate::{config::Args, named_pipe::NamedPipe};
 
 impl splice::AsyncReadable for TcpStream {
     fn try_read(&self, buf: &mut [u8]) -> tokio::io::Result<usize> {
@@ -29,7 +29,14 @@ const ERR_SOCKET_ERROR: i32 = 103; // Socket errot
 
 #[tokio::main]
 async fn main() {
-    let cf_filename = "C:\\pipe-proxy.toml";
+    let args = match Args::create() {
+        Ok(args) => args,
+        Err(err) => {
+            eprintln!("argument error: {err}");
+            std::process::exit(ERR_CONFIG_INVAL);
+        }
+    };
+    let cf_filename = args.config_file.as_str();
     if try_exists(cf_filename)
         .await
         .expect("error checking configuration file")
@@ -39,13 +46,14 @@ async fn main() {
         std::process::exit(ERR_NO_CONFIG);
     }
 
-    let cf = match config::Config::parse_file(cf_filename) {
+    let mut cf = match config::Config::parse_file(cf_filename) {
         Ok(config) => config,
         Err(err) => {
             eprintln!("configuration error: {err}");
             std::process::exit(ERR_CONFIG_INVAL);
         }
     };
+    cf.apply_args(&args);
 
     eprintln!("Windows Pipe Proxy - version 0.3");
     if cf.verbose {
