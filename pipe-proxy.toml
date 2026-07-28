@@ -19,3 +19,5 @@ Address = '127.0.0.1:1032'
 [[Pipe]]
 Pipe = '\\.\pipe\Azrael'
 Address = '0.0.0.0:1033'
+# optional file where the output of the pipe is also being written to
+#File = 'azrael.log'
