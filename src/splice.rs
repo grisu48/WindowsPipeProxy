@@ -45,8 +45,9 @@ async fn pump2(
 pub async fn splice(
     source: &mut (impl AsyncReadable + Unpin),
     sink: &mut (impl AsyncWriteExt + Unpin),
+    bufsize: usize,
 ) -> io::Result<()> {
-    let mut buf = vec![0; 2 * 1024];
+    let mut buf = vec![0; bufsize];
     loop {
         tokio::select! {
             Ok(_) = source.readable() =>
@@ -61,8 +62,9 @@ pub async fn splice2(
     source: &mut (impl AsyncReadable + Unpin),
     sink1: &mut (impl AsyncWriteExt + Unpin),
     sink2: &mut (impl AsyncWriteExt + Unpin),
+    bufsize: usize,
 ) -> io::Result<()> {
-    let mut buf = vec![0; 2 * 1024];
+    let mut buf = vec![0; bufsize];
     loop {
         tokio::select! {
             Ok(_) = source.readable() =>
