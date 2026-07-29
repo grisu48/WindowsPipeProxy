@@ -63,7 +63,7 @@ async fn main() {
         std::process::exit(ERR_CONFIG_INVAL);
     }
 
-    eprintln!("Windows Pipe Proxy - version 0.3");
+    eprintln!("Windows Pipe Proxy - version 0.4");
     if cf.verbose {
         eprintln!("verbose: on");
         eprintln!("Pipe reconnect attempts: {}", cf.plumber.reconnect_attempts);
@@ -196,7 +196,7 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
                             cf.plumber.reconnect_attempts,
                             cf.plumber.reconnect_delay,
                             cf.verbose,
-                            named_pipe.src.as_str()
+                            named_pipe.src.as_str(),
                         ) {
                             eprintln!("{}: pipe error: {err}", named_pipe.src);
                         } else {
