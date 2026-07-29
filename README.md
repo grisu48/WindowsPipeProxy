@@ -7,12 +7,19 @@ Additional documentation is provided in [docs/](docs/).
 
 ## Usage
 
-WPP acts as a drop-in replacement for the aging `Named Pipe TCP Proxy`. It is configured via a [configuration file](pipe-proxy.toml) in `C:\pipe-proxy.toml`. The program supports a set of named pipes and will run just in the background. Once a named pipe appears, it will open a single TCP socket on a defined local address for this pipe.
+WPP acts as a drop-in replacement for the aging `Named Pipe TCP Proxy`. It is configured via a [configuration file](pipe-proxy.toml).
+The program supports a set of named pipes and will run just in the background. Once a named pipe appears, it will open a single TCP socket on a defined local address for this pipe.
 
 To connect to a Hyper-V instance, one needs to first add a COM to named pipe option to the virtual machine, e.g. for a VM named `jellyfish` one could run:
 
 ```
 Set-VMComPort -VMName jellyfish -Number 1 -Path \\.\pipe\jellyfish
+```
+
+Then run the program and pass the configuration file as argument:
+
+```powershell
+.\windows-pipe-proxy.exe pipe-proxy.toml
 ```
 
 ## Credits
