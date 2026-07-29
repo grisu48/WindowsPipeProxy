@@ -1,4 +1,10 @@
-use tokio::io::{self, AsyncWriteExt};
+use tokio::{
+    io::{self, AsyncWriteExt, BufWriter},
+    time::{self},
+};
+
+// Default buffer capacity for a write sync
+const BUFWRITER_CAP: usize = 8192;
 
 pub trait AsyncReadable {
     fn try_read(&self, buf: &mut [u8]) -> io::Result<usize>;
@@ -48,11 +54,14 @@ pub async fn splice(
     bufsize: usize,
 ) -> io::Result<()> {
     let mut buf = vec![0; bufsize];
+    // Wrap output in BufWriter to avoid that a slow network connection would congest the input stream on peaks
+    let mut sink = BufWriter::with_capacity(BUFWRITER_CAP, sink);
+    let mut ticker = time::interval(time::Duration::from_secs(1));
     loop {
         tokio::select! {
             Ok(_) = source.readable() =>
-                pump(source, sink, &mut buf).await?,
-
+                pump(source, &mut sink, &mut buf).await?,
+            _ = &mut Box::pin(ticker.tick()) => sink.flush().await?,
         }
     }
 }
@@ -65,11 +74,18 @@ pub async fn splice2(
     bufsize: usize,
 ) -> io::Result<()> {
     let mut buf = vec![0; bufsize];
+    // Wrap output in BufWriter to avoid that a slow network connection would congest the input stream on peaks
+    let mut sink1 = BufWriter::with_capacity(BUFWRITER_CAP, sink1);
+    let mut sink2 = BufWriter::with_capacity(BUFWRITER_CAP, sink2);
+    let mut ticker = time::interval(time::Duration::from_secs(1));
     loop {
         tokio::select! {
             Ok(_) = source.readable() =>
-                pump2(source, sink1, sink2, &mut buf).await?,
-
+                pump2(source, &mut sink1, &mut sink2, &mut buf).await?,
+            _ = &mut Box::pin(ticker.tick()) => {
+                sink1.flush().await?;
+                sink2.flush().await?;
+            }
         }
     }
 }
