@@ -58,7 +58,10 @@ async fn main() {
         }
     };
     cf.apply_args(&args);
-    cf.verify().expect("invalid configuration");
+    if let Err(err) = cf.verify() {
+        eprintln!("invalid configuration: {err}");
+        std::process::exit(ERR_CONFIG_INVAL);
+    }
 
     eprintln!("Windows Pipe Proxy - version 0.3");
     if cf.verbose {
@@ -73,7 +76,7 @@ async fn main() {
         let listener = match TcpListener::bind(pipe.addr.as_str()).await {
             Ok(listener) => listener,
             Err(err) => {
-                eprintln!("error binding 'tcp socket to {}: {err}", pipe.addr);
+                eprintln!("error binding tcp socket to {}: {err}", pipe.addr);
                 std::process::exit(ERR_SOCKET_ERROR);
             }
         };
@@ -116,7 +119,7 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
                     print = !msg.contains("All pipe instances are busy");
                 }
                 if print {
-                    eprintln!("pipe {} error: {err}", named_pipe.src);
+                    eprintln!("{}: pipe error: {err}", named_pipe.src);
                 }
                 sleep(Duration::from_millis(500)).await;
                 continue;
@@ -125,11 +128,11 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
         let (mut socket, addr) = match listener.accept().await {
             Ok((sock, addr)) => (sock, addr),
             Err(err) => {
-                eprintln!("error accepting client for {}: {err}", named_pipe.src);
+                eprintln!("{}: error accepting client: {err}", named_pipe.src);
                 continue;
             }
         };
-        println!("Connected: {} <==> {}", pipe.path(), addr.to_string());
+        println!("connected: {} <==> {}", pipe.path(), addr.to_string());
         loop {
             let ret;
             if named_pipe.file.is_empty() {
@@ -161,7 +164,10 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
                         .await
                     }
                     Err(err) => {
-                        eprintln!("{} error to open pipe log file: {err}", named_pipe.src);
+                        eprintln!(
+                            "{}: error to open pipe log file: {err} - will continue without log file",
+                            named_pipe.src
+                        );
                         // Continue without pipe log file
                         splice::splice(&mut pipe, &mut socket, cf.plumber.splice_buffer_size).await
                     }
@@ -170,7 +176,7 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
 
             match ret {
                 Ok(_) => {
-                    eprintln!("Unexpected EOF for {}", named_pipe.src);
+                    eprintln!("{}: enexpected EOF", named_pipe.src);
                     break;
                 }
                 Err(e) => {
@@ -190,6 +196,7 @@ async fn worker_loop(named_pipe: Pipe, listener: TcpListener, cf: config::Config
                             cf.plumber.reconnect_attempts,
                             cf.plumber.reconnect_delay,
                             cf.verbose,
+                            named_pipe.src.as_str()
                         ) {
                             eprintln!("{}: pipe error: {err}", named_pipe.src);
                         } else {
